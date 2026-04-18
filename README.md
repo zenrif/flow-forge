@@ -1,66 +1,50 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# ⚙️ Flow Forge - Real-Time Workflow Orchestration Engine (MVP)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## 📌 Overview
+Flow Forge is a simplified, self-hosted workflow orchestration engine built to parse, sort, and execute Directed Acyclic Graph (DAG) definitions. 
 
-## About Laravel
+Due to the strict 4-day timeframe constraints while balancing full-time employment, I made a strategic engineering decision to prioritize the **Core Execution Engine, DAG Parsing logic, and API Layer** over the frontend visualizer. The goal was to ensure the "brain" of the application is robust, strictly validated, and highly available.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🏗️ Architecture & Technical Decisions
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+1. **Modular Monolith & Dockerization:** To accelerate local setup and prevent CORS overhead during the MVP phase, I opted for a Modular Monolith architecture orchestrated via Docker (`docker-compose`). The backend API is strictly decoupled from the UI logic, allowing for an easy transition to a microservices architecture in the future.
+2. **DAG Processing Strategy (Kahn's Algorithm):** Workflows are treated as strictly directed acyclic graphs. The `TopologicalSorter` implements Kahn's Algorithm to validate cycles and organize steps into "waves" for parallel execution.
+3. **Execution Engine via Queues:** Instead of reinventing a concurrent execution pool, I leveraged Laravel's Queue system (`AdvanceWorkflowJob` and `ExecuteStepJob`) to handle step execution, utilizing its native exponential backoff for the required retry logic.
+4. **Single-Database Multi-Tenancy:** To maintain infrastructure simplicity within the MVP timeframe, tenant isolation is handled via a single PostgreSQL database with global scopes, rather than complex multi-database routing.
+5. **Real-time Broadcasting Strategy:** The system emits `StepStatusChanged` and `WorkflowRunStatusChanged` events. While the frontend UI consumption is incomplete, the backend is fully wired to use Pusher (or Laravel Reverb) for seamless WebSocket integration.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## ✅ Completed Features (Phase 1 & 2)
 
-## Learning Laravel
+### 1. Multi-Tenant API & Security
+* JWT-based Authentication (`php-open-source-saver/jwt-auth`).
+* Base CRUD for Workflows with tenant-isolated database architecture.
+* Input validation and sanitization via Laravel Form Requests.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 2. Core DAG Engine (`app/Services/Workflow/DAG/`)
+* **`DagParser.php`**: Validates workflow structure and JSON payloads.
+* **`TopologicalSorter.php`**: Detects infinite loops (cycle detection) and generates execution order.
+* **Custom Exception Handling**: `DagValidationException`, `StepExecutionException`, `WorkflowTimeoutException`.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### 3. Workflow Executors & Orchestration (`app/Jobs/Workflow/`)
+* **`StartWorkflowRunJob.php`**: The entry point that parses the initial workflow state.
+* **`AdvanceWorkflowJob.php`**: The central orchestrator that determines which step to execute next based on the DAG dependencies.
+* **`ExecuteStepJob.php`**: Handles the actual step execution using polymorphism (`HttpStepExecutor`, `ScriptStepExecutor`, etc.) and manages configurable retry logic with exponential backoff.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## ⏳ Known Limitations & Incomplete Features
 
-## Laravel Sponsors
+As an MVP delivered within a 4-day window, the following features were scoped out and marked for future iterations:
+* **Frontend SPA & Real-time Visualizer:** The `resources/js` structure (Vue 3, Pinia, Vue Flow) is scaffolded, but the UI binding to the backend endpoints is incomplete.
+* **AI Enhancements:** The LLM failure analysis API integration was deprioritized to focus on core DAG stability.
+* **Dedicated High-Volume Log Store:** Currently, execution logs are stored in the relational PostgreSQL database. In a production environment, this would be migrated to an append-only NoSQL store (e.g., ClickHouse or MongoDB) to prevent read/write bottlenecks.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 🚀 Setup & Execution
 
-### Premium Partners
+### Prerequisites
+* Docker & Docker Compose
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Installation Steps
+1. Clone the repository.
+2. Copy the environment file: `cp .env.example .env`
+3. Spin up the containers:
+   ```bash
+   docker-compose up -d --build
