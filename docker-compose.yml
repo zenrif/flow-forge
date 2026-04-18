@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flow-forge-app
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./.env:/var/www/html/.env
+    environment:
+      - DB_HOST=db
+      - REDIS_HOST=redis
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15-alpine
+    container_name: flow-forge-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: flow_forge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    container_name: flow-forge-redis
+    restart: unless-stopped
+
+volumes:
+  pgdata:
